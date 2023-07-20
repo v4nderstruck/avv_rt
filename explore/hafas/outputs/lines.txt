@@ -1,0 +1,4 @@
+
+> hafas@1.0.0 script
+> node src/index.js
+
