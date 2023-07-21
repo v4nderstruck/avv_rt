@@ -21,8 +21,7 @@
   };
 </script>
 
-<Page>
-  <Navbar title="🚌 AC Bus Departures" />
+<div>
   <BlockTitle large>Bus Departures</BlockTitle>
   <div class="z-20 w-full">
     <List strongIos insetIos class="mt-8 mb-0 overflow-visible">
@@ -49,7 +48,7 @@
   <List strongIos insetIos>
     <ListItem title="Delay" />
   </List>
-</Page>
+</div>
 
 <style>
   .icon {

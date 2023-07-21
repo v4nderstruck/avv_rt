@@ -29,8 +29,8 @@
 
 <Block strong inset class="z-50 absolute mb-0 mt-4 pt-0 pb-0 fill-width">
   <List class="mt-0 mb-0">
-    {#each displayStations as station (station)}
-      <ListItem title={station} />
+    {#each displayStations as station, i (station)}
+      <ListItem title={station} link href={`/stop/${i}`} />
     {/each}
   </List>
 </Block>

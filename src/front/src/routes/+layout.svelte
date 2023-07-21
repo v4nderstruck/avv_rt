@@ -1,8 +1,11 @@
 <script>
   import "../app.css";
-  import { App } from "konsta/svelte";
+  import { App, Page, Navbar } from "konsta/svelte";
 </script>
 
 <App theme="ios">
-  <slot />
+  <Page>
+    <Navbar title="🚌 AC Bus Departures" />
+    <slot />
+  </Page>
 </App>
