@@ -11,7 +11,7 @@
   const compareWithInput = (input, station_0, station_1) => {
     const distance_a = levehenstein(input, station_0);
     const distance_b = levehenstein(input, station_1);
-    return distance_a * distance_a.length - distance_b * distance_b.length;
+    return distance_a - distance_b;
   };
 
   function filterPossibleStations(input) {
@@ -19,7 +19,7 @@
     possibleStations = possibleStations.sort((s_0, s_1) =>
       compareWithInput(input, s_0, s_1)
     );
-    console.log(input, "in ", Date.now() - start);
+    console.log(input, "in ", Date.now() - start, "ms");
     displayStations = possibleStations.slice(0, 5);
     displayStations.forEach((v) => console.log(v, levehenstein(input, v)));
   }

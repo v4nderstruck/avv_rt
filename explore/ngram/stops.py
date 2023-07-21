@@ -1,4 +1,4 @@
-export const Busstops = [
+Busstops = [
   "Euskirchen, Bf",
   "Mönchengladbach, Hbf",
   "Kerpen, Buir Bahnhof",
