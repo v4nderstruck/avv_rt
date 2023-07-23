@@ -5,32 +5,39 @@
 
   export let searchInput;
 
-  let possibleStations = Busstops;
   let displayStations = [];
 
-  const compareWithInput = (input, station_0, station_1) => {
-    const distance_a = levehenstein(input, station_0);
-    const distance_b = levehenstein(input, station_1);
-    return distance_a - distance_b;
+  const updateStationList = async (input) => {
+    const res = await fetch(`/api/autocomplete?q=${input}`);
+    const data = await res.json();
+    if (data && data.scores) {
+      displayStations = data.scores;
+    }
   };
 
-  function filterPossibleStations(input) {
-    const start = Date.now();
-    possibleStations = possibleStations.sort((s_0, s_1) =>
-      compareWithInput(input, s_0, s_1)
-    );
-    console.log(input, "in ", Date.now() - start, "ms");
-    displayStations = possibleStations.slice(0, 5);
-    displayStations.forEach((v) => console.log(v, levehenstein(input, v)));
-  }
+  // const compareWithInput = (input, station_0, station_1) => {
+  //   const distance_a = levehenstein(input, station_0);
+  //   const distance_b = levehenstein(input, station_1);
+  //   return distance_a - distance_b;
+  // };
+  //
+  // function filterPossibleStations(input) {
+  //   const start = Date.now();
+  //   possibleStations = possibleStations.sort((s_0, s_1) =>
+  //     compareWithInput(input, s_0, s_1)
+  //   );
+  //   console.log(input, "in ", Date.now() - start, "ms");
+  //   displayStations = possibleStations.slice(0, 5);
+  //   displayStations.forEach((v) => console.log(v, levehenstein(input, v)));
+  // }
 
-  $: filterPossibleStations(searchInput);
+  $: updateStationList(searchInput);
 </script>
 
 <Block strong inset class="z-50 absolute mb-0 mt-4 pt-0 pb-0 fill-width">
   <List class="mt-0 mb-0">
     {#each displayStations as station, i (station)}
-      <ListItem title={station} link href={`/stop/${i}`} />
+      <ListItem title={station.name} link href={`/stop/${i}`} />
     {/each}
   </List>
 </Block>

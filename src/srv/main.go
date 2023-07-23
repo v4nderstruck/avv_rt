@@ -75,7 +75,8 @@ type Score struct {
 func autocomplete(ctx *gin.Context, app *AppCtx) {
 	query := ctx.Query("q")
 	if len(query) == 0 {
-		ctx.Status(http.StatusTeapot)
+		ctx.JSON(http.StatusOK, gin.H{"scores": []Score{}})
+
 		return
 	}
 	query = normalizeBusstop(query)
