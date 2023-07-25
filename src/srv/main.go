@@ -10,16 +10,17 @@ import (
 	"sync"
 
 	"github.com/gin-gonic/gin"
+
+	hafasclient "github.com/zensayyy/avv_rt/hafas_client"
 )
 
 type Busstop struct {
-	name  string
+	Name  string `json:"name"`
 	pairs [][2]byte
 }
 
 type AppCtx struct {
-	busstops []Busstop
-	n        int
+	busstops map[string]Busstop
 }
 
 func normalizeBusstop(busstop string) string {
@@ -38,16 +39,6 @@ func pairedBusstops(busstop string) [][2]byte {
 	return pairs
 }
 
-func prepareBusstops(busstops []string, n int) []Busstop {
-	pairs := make([]Busstop, len(busstops))
-
-	for i := 0; i < n; i++ {
-		stop := normalizeBusstop(busstops[i])
-		pairs[i] = Busstop{busstops[i], pairedBusstops(stop)}
-	}
-	return pairs
-}
-
 func intersection(a, b [][2]byte) int {
 	c := 0
 	for _, x := range a {
@@ -60,16 +51,17 @@ func intersection(a, b [][2]byte) int {
 	return c
 }
 
-func scoring(qpairs [][2]byte, busstop *Busstop, c chan Score) {
-	intersection := intersection(qpairs, busstop.pairs)
-	score := (2 * float64(intersection)) / (float64(len(qpairs)) + float64(len(busstop.pairs)))
-	s := Score{busstop.name, score}
-	c <- s
-}
-
 type Score struct {
+	Id    string  `json:"id"`
 	Name  string  `json:"name"`
 	Score float64 `json:"score"`
+}
+
+func scoring(qpairs [][2]byte, busstop *Busstop, id string, c chan Score) {
+	intersection := intersection(qpairs, busstop.pairs)
+	score := (2 * float64(intersection)) / (float64(len(qpairs)) + float64(len(busstop.pairs)))
+	s := Score{id, busstop.Name, score}
+	c <- s
 }
 
 func autocomplete(ctx *gin.Context, app *AppCtx) {
@@ -82,14 +74,17 @@ func autocomplete(ctx *gin.Context, app *AppCtx) {
 	query = normalizeBusstop(query)
 	qpairs := pairedBusstops(query)
 
+	log.Printf("Query %s", qpairs)
 	ch := make(chan Score)
 	var wg sync.WaitGroup
-	for i := 0; i < app.n; i++ {
+	for stopId, busstop := range app.busstops {
+		id := stopId
+		bus := busstop
 		wg.Add(1)
-		go func(index int) {
+		go func() {
 			defer wg.Done()
-			scoring(qpairs, &app.busstops[index], ch)
-		}(i)
+			scoring(qpairs, &bus, id, ch)
+		}()
 	}
 
 	go func() {
@@ -110,10 +105,33 @@ func autocomplete(ctx *gin.Context, app *AppCtx) {
 	ctx.JSON(http.StatusOK, t)
 }
 
+func fetchDepartures(ctx *gin.Context, app *AppCtx, stopId string) {
+	if stopId == "" {
+		ctx.Status(http.StatusOK)
+		return
+	}
+
+	if stop, ok := app.busstops[stopId]; ok {
+		client := hafasclient.NewClient()
+		departures, err := client.GetDepartures(stopId)
+		if err != nil {
+			ctx.JSON(http.StatusOK, gin.H{"error": err.Error()})
+			return
+		}
+		ctx.JSON(http.StatusOK, gin.H{"stop": stop, "departures": departures})
+		return
+	}
+	ctx.JSON(http.StatusOK, gin.H{"error": "Stop not found"})
+}
+
 func setupRoutes(app *AppCtx) *gin.Engine {
 	r := gin.Default()
 	r.GET("/autocomplete", func(ctx *gin.Context) {
 		autocomplete(ctx, app)
+	})
+
+	r.GET("/departure/:stopId", func(ctx *gin.Context) {
+		fetchDepartures(ctx, app, ctx.Param("stopId"))
 	})
 	return r
 }
@@ -126,26 +144,23 @@ func main() {
 	}
 	defer file.Close()
 
-	busstops := make([]string, 1000)
+	busstops := make(map[string]Busstop)
 
 	scanner := bufio.NewScanner(file)
-	i := 0
-	for ; scanner.Scan(); i++ {
-		if i == cap(busstops) {
-			nb := make([]string, len(busstops)*2, cap(busstops)*2)
-			copy(nb, busstops)
-			busstops = nb
+	for scanner.Scan() {
+		scan := scanner.Text()
+		split := strings.Split(scan, ";")
+		id, name := split[0], split[1]
+
+		busstops[id] = Busstop{
+			Name:  name,
+			pairs: pairedBusstops(normalizeBusstop(name)),
 		}
-		busstops[i] = scanner.Text()
+
 	}
 
-	log.Printf("Busstops loaded %d entries \n", i)
-	log.Printf("%s \n", busstops[0])
-	pairs := prepareBusstops(busstops, i)
-
-	log.Printf("%s %d", pairs[0].name, len(pairs[0].pairs))
-	app := AppCtx{pairs, i}
-
+	log.Printf("Busstops loaded %d entries \n", len(busstops))
+	app := AppCtx{busstops}
 	r := setupRoutes(&app)
 	r.Run(":8080")
 }

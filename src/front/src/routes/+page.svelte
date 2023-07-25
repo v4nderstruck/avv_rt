@@ -11,9 +11,13 @@
   import Autocomplete from "../components/Autocomplete.svelte";
 
   let stationSearch = "";
+  let timer;
 
   const onStationSearchChanged = (e) => {
-    stationSearch = e.target.value;
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      stationSearch = e.target.value;
+    }, 250);
   };
 
   const onStationSearchCleared = () => {
