@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -74,7 +75,6 @@ func autocomplete(ctx *gin.Context, app *AppCtx) {
 	query = normalizeBusstop(query)
 	qpairs := pairedBusstops(query)
 
-	log.Printf("Query %s", qpairs)
 	ch := make(chan Score)
 	var wg sync.WaitGroup
 	for stopId, busstop := range app.busstops {
@@ -105,7 +105,7 @@ func autocomplete(ctx *gin.Context, app *AppCtx) {
 	ctx.JSON(http.StatusOK, t)
 }
 
-func fetchDepartures(ctx *gin.Context, app *AppCtx, stopId string) {
+func fetchDepartures(ctx *gin.Context, app *AppCtx, stopId string, num string) {
 	if stopId == "" {
 		ctx.Status(http.StatusOK)
 		return
@@ -118,6 +118,16 @@ func fetchDepartures(ctx *gin.Context, app *AppCtx, stopId string) {
 			ctx.JSON(http.StatusOK, gin.H{"error": err.Error()})
 			return
 		}
+
+		if num_i, err := strconv.Atoi(num); err == nil {
+			if num_i < len(departures) {
+				ctx.JSON(http.StatusOK, gin.H{"stop": stop, "departures": departures[0:num_i]})
+			} else {
+				ctx.JSON(http.StatusOK, gin.H{"stop": stop, "departures": departures})
+			}
+			return
+		}
+
 		ctx.JSON(http.StatusOK, gin.H{"stop": stop, "departures": departures})
 		return
 	}
@@ -130,8 +140,8 @@ func setupRoutes(app *AppCtx) *gin.Engine {
 		autocomplete(ctx, app)
 	})
 
-	r.GET("/departure/:stopId", func(ctx *gin.Context) {
-		fetchDepartures(ctx, app, ctx.Param("stopId"))
+	r.GET("/departure/:stopId/:num", func(ctx *gin.Context) {
+		fetchDepartures(ctx, app, ctx.Param("stopId"), ctx.Param("num"))
 	})
 	return r
 }
